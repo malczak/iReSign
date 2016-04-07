@@ -21,6 +21,12 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 
 #define STR_EMPTY(str) (!str || [str isEqualTo:@""])
 
+#ifdef USE_NS_LOG
+  #define _LOG(str, ...) NSLog(str, __VA_ARGS__)
+#else
+  #define _LOG(str, ...)
+#endif
+
 @interface IRResignTask ()
 
 @property (nonatomic, strong) IRTask *task;
@@ -64,12 +70,16 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
   NSString *sourcePath = self.sourcePath;
   self.workingPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"com.appulize.iresign"];
   
+  if(self.delegate) {
+    [self.delegate resignTaskDidStart:self];
+  }
+  
   if (self.certName) {
     if (([[[sourcePath pathExtension] lowercaseString] isEqualToString:@"ipa"]) ||
         ([[[sourcePath pathExtension] lowercaseString] isEqualToString:@"xcarchive"])) {
 //      [self disableControls];
       
-      NSLog(@"Setting up working directory in %@", self.workingPath);
+      _LOG(@"Setting up working directory in %@", self.workingPath);
 //      [statusLabel setHidden:NO];
       [self status:@"Setting up working directory"];
       
@@ -78,7 +88,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
       
       if ([[[sourcePath pathExtension] lowercaseString] isEqualToString:@"ipa"]) {
         if (sourcePath && [sourcePath length] > 0) {
-          NSLog(@"Unzipping %@",sourcePath);
+          _LOG(@"Unzipping %@",sourcePath);
           [self status:@"Extracting original app"];
         }
         
@@ -101,12 +111,12 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
       else {
         NSString* payloadPath = [self.workingPath stringByAppendingPathComponent:kPayloadDirName];
         
-        NSLog(@"Setting up %@ path in %@", kPayloadDirName, payloadPath);
+        _LOG(@"Setting up %@ path in %@", kPayloadDirName, payloadPath);
         [self status:[NSString stringWithFormat:@"Setting up %@ path", kPayloadDirName]];
         
         [[NSFileManager defaultManager] createDirectoryAtPath:payloadPath withIntermediateDirectories:TRUE attributes:nil error:nil];
         
-        NSLog(@"Retrieving %@", kInfoPlistFilename);
+        _LOG(@"Retrieving %@", kInfoPlistFilename);
         [self status:[NSString stringWithFormat:@"Retrieving %@", kInfoPlistFilename]];
         
         NSString* infoPListPath = [sourcePath stringByAppendingPathComponent:kInfoPlistFilename];
@@ -125,7 +135,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
           if (applicationPath != nil) {
             applicationPath = [[sourcePath stringByAppendingPathComponent:kProductsDirName] stringByAppendingPathComponent:applicationPath];
             
-            NSLog(@"Copying %@ to %@ path in %@", applicationPath, kPayloadDirName, payloadPath);
+            _LOG(@"Copying %@ to %@ path in %@", applicationPath, kPayloadDirName, payloadPath);
             [self status:[NSString stringWithFormat:@"Copying .xcarchive app to %@ path", kPayloadDirName]];
             
             __weak typeof(self) weakSelf = self;
@@ -146,43 +156,48 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
           else {
 //            [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:[NSString stringWithFormat:@"Unable to parse %@", kInfoPlistFilename]];
 //            [self enableControls];
-            [self status:@"Ready"];
+            [self status:[NSString stringWithFormat:@"Unable to parse %@", kInfoPlistFilename]];
+            [self resignFailed:nil];
           }
         }
         else {
 //          [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:[NSString stringWithFormat:@"Retrieve %@ failed", kInfoPlistFilename]];
 //          [self enableControls];
-          [self status:@"Ready"];
+          [self status:[NSString stringWithFormat:@"Retrieve %@ failed", kInfoPlistFilename]];
+          [self resignFailed:nil];
         }
       }
     }
     else {
 //      [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"You must choose an *.ipa or *.xcarchive file"];
 //      [self enableControls];
-      [self status:@"Please try again"];
+      [self status:@"You must choose an *.ipa or *.xcarchive file"];
+      [self resignFailed:nil];
     }
   } else {
 //    [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"You must choose an signing certificate from dropdown."];
 //    [self enableControls];
-    [self status:@"Please try again"];
+    [self status:@"You must choose an signing certificate from dropdown."];
+    [self resignFailed:nil];
   }
 }
 
 - (void)checkUnzip {
   if ([[NSFileManager defaultManager] fileExistsAtPath:[self.workingPath stringByAppendingPathComponent:kPayloadDirName]]) {
-    NSLog(@"Unzipping done");
+    _LOG(@"Unzipping done");
     [self status:@"Original app extracted"];
     
     [self processWorkingDir];
   } else {
 //    [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Unzip failed"];
 //    [self enableControls];
-    [self status:@"Ready"];
+    [self status:@"Unzip failed"];
+    [self resignFailed:nil];
   }
 }
 
 - (void)checkCopy {
-  NSLog(@"Copy done");
+  _LOG(@"Copy done");
       [self status:@".xcarchive app copied"];
   
   [self processWorkingDir];
@@ -266,7 +281,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     if ([[[file pathExtension] lowercaseString] isEqualToString:@"app"]) {
       self.appPath = [[self.workingPath stringByAppendingPathComponent:kPayloadDirName] stringByAppendingPathComponent:file];
       if ([[NSFileManager defaultManager] fileExistsAtPath:[self.appPath stringByAppendingPathComponent:@"embedded.mobileprovision"]]) {
-        NSLog(@"Found embedded.mobileprovision, deleting.");
+        _LOG(@"Found embedded.mobileprovision, deleting.");
         [[NSFileManager defaultManager] removeItemAtPath:[self.appPath stringByAppendingPathComponent:@"embedded.mobileprovision"] error:nil];
       }
       break;
@@ -336,27 +351,29 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
           }
         }
         
-        NSLog(@"Mobileprovision identifier: %@",identifierInProvisioning);
+        _LOG(@"Mobileprovision identifier: %@",identifierInProvisioning);
         
         NSDictionary *infoplist = [NSDictionary dictionaryWithContentsOfFile:[self.appPath stringByAppendingPathComponent:@"Info.plist"]];
         if ([identifierInProvisioning isEqualTo:[infoplist objectForKey:kKeyBundleIDPlistApp]]) {
-          NSLog(@"Identifiers match");
+          _LOG(@"Identifiers match");
           identifierOK = TRUE;
         }
         
         if (identifierOK) {
-          NSLog(@"Provisioning completed.");
+          _LOG(@"Provisioning completed.");
           [self status:@"Provisioning completed"];
           [self doEntitlementsFixing];
         } else {
 //          [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Product identifiers don't match"];
 //          [self enableControls];
-          [self status:@"Ready"];
+          [self status:@"Product identifiers don't match"];
+          [self resignFailed:nil];
         }
       } else {
 //        [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Provisioning failed"];
 //        [self enableControls];
-        [self status:@"Ready"];
+        [self status:@"Provisioning failed"];
+        [self resignFailed:nil];
       }
       break;
     }
@@ -416,7 +433,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 //  if ([generateEntitlementsTask isRunning] == 0) {
 //    [timer invalidate];
 //    generateEntitlementsTask = nil;
-//    NSLog(@"Entitlements fixed done");
+//    _LOG(@"Entitlements fixed done");
 //    [self status:@"Entitlements generated"];
 //    [self doEntitlementsEdit];
 //  }
@@ -430,10 +447,11 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
   NSString* filePath = [self.workingPath stringByAppendingPathComponent:@"entitlements.plist"];
   NSData *xmlData = [NSPropertyListSerialization dataWithPropertyList:entitlements format:NSPropertyListXMLFormat_v1_0 options:kCFPropertyListImmutable error:nil];
   if(![xmlData writeToFile:filePath atomically:YES]) {
-    NSLog(@"Error writing entitlements file.");
+    _LOG(@"Error writing entitlements file.");
 //    [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Failed entitlements generation"];
 //    [self enableControls];
-    [self status:@"Ready"];
+    [self status:@"Failed entitlements generation"];
+    [self resignFailed:nil];
   }
   else {
 //    entitlementField.stringValue = filePath;
@@ -453,17 +471,17 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     if ([[[file pathExtension] lowercaseString] isEqualToString:@"app"]) {
       self.appPath = [[self.workingPath stringByAppendingPathComponent:kPayloadDirName] stringByAppendingPathComponent:file];
       frameworksDirPath = [self.appPath stringByAppendingPathComponent:kFrameworksDirName];
-      NSLog(@"Found %@",self.appPath);
+      _LOG(@"Found %@",self.appPath);
       self.appName = file;
       if ([[NSFileManager defaultManager] fileExistsAtPath:frameworksDirPath]) {
-        NSLog(@"Found %@",frameworksDirPath);
+        _LOG(@"Found %@",frameworksDirPath);
         self.hasFrameworks = YES;
         NSArray *frameworksContents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:frameworksDirPath error:nil];
         for (NSString *frameworkFile in frameworksContents) {
           NSString *extension = [[frameworkFile pathExtension] lowercaseString];
           if ([extension isEqualTo:@"framework"] || [extension isEqualTo:@"dylib"]) {
             NSString *frameworkPath = [frameworksDirPath stringByAppendingPathComponent:frameworkFile];
-            NSLog(@"Found %@",frameworkPath);
+            _LOG(@"Found %@",frameworkPath);
             [self.frameworks addObject:frameworkPath];
           }
         }
@@ -484,7 +502,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 }
 
 - (void)signFile:(NSString*)filePath {
-  NSLog(@"Codesigning %@", filePath);
+  _LOG(@"Codesigning %@", filePath);
   [self status:[NSString stringWithFormat:@"Codesigning %@",filePath]];
   
   NSMutableArray *arguments = [NSMutableArray arrayWithObjects:@"-fs", self.certName, nil];
@@ -567,7 +585,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     self.hasFrameworks = NO;
     [self signFile:self.appPath];
   } else {
-    NSLog(@"Codesigning done");
+    _LOG(@"Codesigning done");
     [self status:@"Codesigning completed"];
     [self doVerifySignature];
   }
@@ -591,7 +609,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     
 //    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(checkVerificationProcess:) userInfo:nil repeats:TRUE];
     
-//    NSLog(@"Verifying %@",appPath);
+//    _LOG(@"Verifying %@",appPath);
 //    [self status:[NSString stringWithFormat:@"Verifying %@",self.appName]];
     
 //    NSPipe *pipe=[NSPipe pipe];
@@ -618,7 +636,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
   self.verificationResult = verificationResult;
 
   if ([verificationResult length] == 0) {
-    NSLog(@"Verification done");
+    _LOG(@"Verification done");
     [self status:@"Verification completed"];
     [self doZip];
   } else {
@@ -626,6 +644,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 //    [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Signing failed" AndMessage:error];
 //    [self enableControls];
     [self status:@"Please try again"];
+    [self resignFailed:nil];
   }
 }
 
@@ -646,7 +665,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     
     destinationPath = [destinationPath stringByAppendingPathComponent:fileName];
     
-    NSLog(@"Dest: %@",destinationPath);
+    _LOG(@"Dest: %@",destinationPath);
     
     __weak typeof(self) weakSelf = self;
     self.task = [[IRTask alloc] initWithLaunchPath:@"/usr/bin/zip"
@@ -664,7 +683,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     
 //    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(checkZip:) userInfo:nil repeats:TRUE];
     
-//    NSLog(@"Zipping %@", destinationPath);
+//    _LOG(@"Zipping %@", destinationPath);
     [self status:[NSString stringWithFormat:@"Saving %@",fileName]];
 //
 //    [zipTask launch];
@@ -672,19 +691,34 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 }
 
 - (void)checkZip {
-  NSLog(@"Zipping done");
-  [self status:[NSString stringWithFormat:@"Saved %@",self.outputFile]];
+  _LOG(@"Zipping done");
   
 //  [self enableControls];
   
   NSString *result = [[self.codesigningResult stringByAppendingString:@"\n\n"] stringByAppendingString:self.verificationResult];
-  NSLog(@"Codesigning result: %@",result);
+  _LOG(@"Codesigning result: %@",result);
+  [self status:[NSString stringWithFormat:@"Saved '%@'. Result '%@'",self.outputFile, result]];
   
+  [self resignCompleted];
+}
+
+- (void) resignCompleted {
+  if(self.delegate) {
+    [self.delegate resignTaskDidComplete:self];
+  }
+  [self cleanUp];
+}
+
+- (void) resignFailed:(NSError*) error {
+  if(self.delegate) {
+    [self.delegate resignTaskDidComplete:self];
+  }
   [self cleanUp];
 }
 
 -(void) cleanUp {
   [[NSFileManager defaultManager] removeItemAtPath:self.workingPath error:nil];
+
   self.task = nil;
   self.delegate = nil;
 }
@@ -697,10 +731,6 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
       [self.delegate resignTask:self didSetStatus:statusText];
     }
   }
-}
-
--(void)dealloc {
-  NSLog(@"Ups");
 }
 
 @end

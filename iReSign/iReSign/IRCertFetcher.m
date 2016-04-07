@@ -32,9 +32,6 @@
   
   self.completeBlock = completeBlock;
   
-  NSLog(@"Getting Certificate IDs");
-//  [statusLabel setStringValue:@"Getting Signing Certificate IDs"];
-  
   __weak IRCertFetcher* weakSelf = self;
   void (^handler)(IRTask*, NSPipe*) = ^(IRTask *task, NSPipe *pipe) {
     [weakSelf readCerts:[pipe fileHandleForReading]];
@@ -57,8 +54,6 @@
     NSArray *rawResult = [securityResult componentsSeparatedByString:@"\""];
     NSMutableArray *tempGetCertsResult = [NSMutableArray arrayWithCapacity:20];
     for (int i = 0; i <= [rawResult count] - 2; i+=2) {
-      
-      NSLog(@"i:%d", i+1);
       if (rawResult.count - 1 < i + 1) {
         // Invalid array, don't add an object to that position
       } else {
@@ -74,10 +69,6 @@
     self.completeBlock(tempGetCertsResult);
     self.completeBlock = nil;
   }
-}
-
--(void)dealloc {
-  NSLog(@"Dead");
 }
 
 @end

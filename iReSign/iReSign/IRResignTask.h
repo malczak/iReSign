@@ -13,6 +13,12 @@
 
 @protocol IRResignTaskDelegate <NSObject>
 
+-(void) resignTaskDidStart:(IRResignTask * _Nonnull) task;
+
+-(void) resignTaskDidComplete:(IRResignTask * _Nonnull) task;
+
+-(void) resignTaskDidComplete:(IRResignTask * _Nonnull) task withError:(NSError* _Nonnull) error;
+
 @optional
 
 -(void) resignTask:(IRResignTask * _Nonnull)task didSetStatus:(NSString * _Nonnull)string;
