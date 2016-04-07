@@ -8,18 +8,10 @@
 //
 
 #import "iReSignAppDelegate.h"
+#import "IRResignTask.h"
+#import "IRCertFetcher.h"
 
 static NSString *kKeyPrefsBundleIDChange            = @"keyBundleIDChange";
-
-static NSString *kKeyBundleIDPlistApp               = @"CFBundleIdentifier";
-static NSString *kKeyBundleIDPlistiTunesArtwork     = @"softwareVersionBundleId";
-static NSString *kKeyInfoPlistApplicationProperties = @"ApplicationProperties";
-static NSString *kKeyInfoPlistApplicationPath       = @"ApplicationPath";
-static NSString *kFrameworksDirName                 = @"Frameworks";
-static NSString *kPayloadDirName                    = @"Payload";
-static NSString *kProductsDirName                   = @"Products";
-static NSString *kInfoPlistFilename                 = @"Info.plist";
-static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 
 @implementation iReSignAppDelegate
 
@@ -53,7 +45,29 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     }
 }
 
+#pragma mark -- RESIGN BEGIN
+- (IBAction)resign:(id)sender {
+  [defaults setValue:[NSNumber numberWithInteger:[certComboBox indexOfSelectedItem]] forKey:@"CERT_INDEX"];
+  [defaults setValue:[entitlementField stringValue] forKey:@"ENTITLEMENT_PATH"];
+  [defaults setValue:[provisioningPathField stringValue] forKey:@"MOBILEPROVISION_PATH"];
+  [defaults setValue:[bundleIDField stringValue] forKey:kKeyPrefsBundleIDChange];
+  [defaults synchronize];
 
+  IRResignTask *task = [[IRResignTask alloc] init];
+  task.delegate = self;
+  task.sourcePath = [pathField stringValue];
+  task.provisioningPath = [provisioningPathField stringValue];
+  task.entitlementPath = [entitlementField stringValue];
+  
+  if (changeBundleIDCheckbox.state == NSOnState) {
+    task.changeBundleID = YES;
+    task.bundleID = bundleIDField.stringValue;
+  }
+  
+  [task resign];
+}
+
+/*
 - (IBAction)resign:(id)sender {
     //Save cert name
     [defaults setValue:[NSNumber numberWithInteger:[certComboBox indexOfSelectedItem]] forKey:@"CERT_INDEX"];
@@ -479,22 +493,20 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     NSArray * version = [systemVersion componentsSeparatedByString:@"."];
     if ([version[0] intValue]<10 || ([version[0] intValue]==10 && ([version[1] intValue]<9 || ([version[1] intValue]==9 && [version[2] intValue]<5)))) {
         
-        /*
-         Before OSX 10.9, code signing requires a version 1 signature.
-         The resource envelope is necessary.
-         To ensure it is added, append the resource flag to the arguments.
-         */
-        
+         // Before OSX 10.9, code signing requires a version 1 signature.
+         // The resource envelope is necessary.
+         // To ensure it is added, append the resource flag to the arguments.
+ 
         NSString *resourceRulesPath = [[NSBundle mainBundle] pathForResource:@"ResourceRules" ofType:@"plist"];
         NSString *resourceRulesArgument = [NSString stringWithFormat:@"--resource-rules=%@",resourceRulesPath];
         [arguments addObject:resourceRulesArgument];
     } else {
         
-        /*
-         For OSX 10.9 and later, code signing requires a version 2 signature.
-         The resource envelope is obsolete.
-         To ensure it is ignored, remove the resource key from the Info.plist file.
-         */
+ 
+         // For OSX 10.9 and later, code signing requires a version 2 signature.
+         // The resource envelope is obsolete.
+         // To ensure it is ignored, remove the resource key from the Info.plist file.
+         
         
         NSString *infoPath = [NSString stringWithFormat:@"%@/Info.plist", filePath];
         NSMutableDictionary *infoDict = [NSMutableDictionary dictionaryWithContentsOfFile:infoPath];
@@ -648,6 +660,8 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
         NSLog(@"Codesigning result: %@",result);
     }
 }
+*/
+#pragma mark -- RESIGN END
 
 - (IBAction)browse:(id)sender {
     NSOpenPanel* openDlg = [NSOpenPanel openPanel];
@@ -753,83 +767,46 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 }
 
 - (void)getCerts {
-    
-    getCertsResult = nil;
-    
-    NSLog(@"Getting Certificate IDs");
-    [statusLabel setStringValue:@"Getting Signing Certificate IDs"];
-    
-    certTask = [[NSTask alloc] init];
-    [certTask setLaunchPath:@"/usr/bin/security"];
-    [certTask setArguments:[NSArray arrayWithObjects:@"find-identity", @"-v", @"-p", @"codesigning", nil]];
-    
-    [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(checkCerts:) userInfo:nil repeats:TRUE];
-    
-    NSPipe *pipe=[NSPipe pipe];
-    [certTask setStandardOutput:pipe];
-    [certTask setStandardError:pipe];
-    NSFileHandle *handle=[pipe fileHandleForReading];
-    
-    [certTask launch];
-    
-    [NSThread detachNewThreadSelector:@selector(watchGetCerts:) toTarget:self withObject:handle];
+  getCertsResult = nil;
+
+  NSLog(@"Getting Certificate IDs");
+  [statusLabel setStringValue:@"Getting Signing Certificate IDs"];
+
+  IRCertFetcher *certFetcher = [[IRCertFetcher alloc] init];
+  [certFetcher getCertsWithCompletion:^(NSArray *certificates) {
+    if(self) {
+      [self setCerts:certificates];
+    }
+  }];
 }
 
-- (void)watchGetCerts:(NSFileHandle*)streamHandle {
-    @autoreleasepool {
-        
-        NSString *securityResult = [[NSString alloc] initWithData:[streamHandle readDataToEndOfFile] encoding:NSASCIIStringEncoding];
-        // Verify the security result
-        if (securityResult == nil || securityResult.length < 1) {
-            // Nothing in the result, return
-            return;
-        }
-        NSArray *rawResult = [securityResult componentsSeparatedByString:@"\""];
-        NSMutableArray *tempGetCertsResult = [NSMutableArray arrayWithCapacity:20];
-        for (int i = 0; i <= [rawResult count] - 2; i+=2) {
-            
-            NSLog(@"i:%d", i+1);
-            if (rawResult.count - 1 < i + 1) {
-                // Invalid array, don't add an object to that position
-            } else {
-                // Valid object
-                [tempGetCertsResult addObject:[rawResult objectAtIndex:i+1]];
-            }
-        }
-        
-        certComboBoxItems = [NSMutableArray arrayWithArray:tempGetCertsResult];
-        
-        [certComboBox reloadData];
-        
-    }
+- (void)setCerts:(NSArray*) certs {
+  certComboBoxItems = [NSMutableArray arrayWithArray:certs];  
+  [certComboBox reloadData];
+  [self checkCerts];
 }
 
-- (void)checkCerts:(NSTimer *)timer {
-    if ([certTask isRunning] == 0) {
-        [timer invalidate];
-        certTask = nil;
-        
-        if ([certComboBoxItems count] > 0) {
-            NSLog(@"Get Certs done");
-            [statusLabel setStringValue:@"Signing Certificate IDs extracted"];
-            
-            if ([defaults valueForKey:@"CERT_INDEX"]) {
-                
-                NSInteger selectedIndex = [[defaults valueForKey:@"CERT_INDEX"] integerValue];
-                if (selectedIndex != -1) {
-                    NSString *selectedItem = [self comboBox:certComboBox objectValueForItemAtIndex:selectedIndex];
-                    [certComboBox setObjectValue:selectedItem];
-                    [certComboBox selectItemAtIndex:selectedIndex];
-                }
-                
-                [self enableControls];
-            }
-        } else {
-            [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Getting Certificate ID's failed"];
-            [self enableControls];
-            [statusLabel setStringValue:@"Ready"];
-        }
+- (void)checkCerts {
+  if ([certComboBoxItems count] > 0) {
+    NSLog(@"Get Certs done");
+    [statusLabel setStringValue:@"Signing Certificate IDs extracted"];
+    
+    if ([defaults valueForKey:@"CERT_INDEX"]) {
+      
+      NSInteger selectedIndex = [[defaults valueForKey:@"CERT_INDEX"] integerValue];
+      if (selectedIndex != -1) {
+        NSString *selectedItem = [self comboBox:certComboBox objectValueForItemAtIndex:selectedIndex];
+        [certComboBox setObjectValue:selectedItem];
+        [certComboBox selectItemAtIndex:selectedIndex];
+      }
+      
+      [self enableControls];
     }
+  } else {
+    [self showAlertOfKind:NSCriticalAlertStyle WithTitle:@"Error" AndMessage:@"Getting Certificate ID's failed"];
+    [self enableControls];
+    [statusLabel setStringValue:@"Ready"];
+  }
 }
 
 // If the application dock icon is clicked, reopen the window
@@ -857,5 +834,14 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
     [alert setAlertStyle:style];
     [alert runModal];
 }
+
+#pragma mark - Protocol IRResignTaskDelegate conformance
+
+-(void)resignTask:(IRResignTask *)task didSetStatus:(NSString *)status
+{
+  [statusLabel setHidden:NO];
+  [statusLabel setStringValue:status];
+}
+
 
 @end

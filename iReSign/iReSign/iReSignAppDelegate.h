@@ -8,9 +8,10 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#import "IRResignTask.h"
 #import "IRTextFieldDrag.h"
 
-@interface iReSignAppDelegate : NSObject <NSApplicationDelegate> {
+@interface iReSignAppDelegate : NSObject <NSApplicationDelegate, IRResignTaskDelegate> {
 @private
     NSWindow *__unsafe_unretained window;
     
@@ -52,7 +53,6 @@
     
     IBOutlet NSComboBox *certComboBox;
     NSMutableArray *certComboBoxItems;
-    NSTask *certTask;
     NSArray *getCertsResult;
     
 }
@@ -67,16 +67,16 @@
 - (IBAction)entitlementBrowse:(id)sender;
 - (IBAction)changeBundleIDPressed:(id)sender;
 
-- (void)checkUnzip:(NSTimer *)timer;
-- (void)checkCopy:(NSTimer *)timer;
-- (void)doProvisioning;
-- (void)checkProvisioning:(NSTimer *)timer;
-- (void)doCodeSigning;
-- (void)checkCodesigning:(NSTimer *)timer;
-- (void)doVerifySignature;
-- (void)checkVerificationProcess:(NSTimer *)timer;
-- (void)doZip;
-- (void)checkZip:(NSTimer *)timer;
+//- (void)checkUnzip:(NSTimer *)timer;
+//- (void)checkCopy:(NSTimer *)timer;
+//- (void)doProvisioning;
+//- (void)checkProvisioning:(NSTimer *)timer;
+//- (void)doCodeSigning;
+//- (void)checkCodesigning:(NSTimer *)timer;
+//- (void)doVerifySignature;
+//- (void)checkVerificationProcess:(NSTimer *)timer;
+//- (void)doZip;
+//- (void)checkZip:(NSTimer *)timer;
 - (void)disableControls;
 - (void)enableControls;
 
