@@ -22,9 +22,9 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 #define STR_EMPTY(str) (!str || [str isEqualTo:@""])
 
 #ifdef USE_NS_LOG
-  #define _LOG(str, ...) NSLog(str, __VA_ARGS__)
+  #define _LOG(...) NSLog(__VA_ARGS__)
 #else
-  #define _LOG(str, ...)
+  #define _LOG(...)
 #endif
 
 @interface IRResignTask ()
@@ -198,8 +198,7 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
 
 - (void)checkCopy {
   _LOG(@"Copy done");
-      [self status:@".xcarchive app copied"];
-  
+  [self status:@".xcarchive app copied"];
   [self processWorkingDir];
 }
 
