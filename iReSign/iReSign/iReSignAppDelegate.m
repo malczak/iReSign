@@ -13,6 +13,16 @@
 
 static NSString *kKeyPrefsBundleIDChange            = @"keyBundleIDChange";
 
+
+@interface iReSignAppDelegate ()
+
+@property (nonatomic, strong) IRCertFetcher *certFetcher;
+
+@property (nonatomic, strong) IRResignTask *task;
+
+@end
+
+
 @implementation iReSignAppDelegate
 
 @synthesize window,workingPath;
@@ -53,18 +63,19 @@ static NSString *kKeyPrefsBundleIDChange            = @"keyBundleIDChange";
   [defaults setValue:[bundleIDField stringValue] forKey:kKeyPrefsBundleIDChange];
   [defaults synchronize];
 
-  IRResignTask *task = [[IRResignTask alloc] init];
-  task.delegate = self;
-  task.sourcePath = [pathField stringValue];
-  task.provisioningPath = [provisioningPathField stringValue];
-  task.entitlementPath = [entitlementField stringValue];
-  
+  self.task = [[IRResignTask alloc] init];
+  self.task.delegate = self;
+  self.task.sourcePath = [pathField stringValue];
+  self.task.provisioningPath = [provisioningPathField stringValue];
+  self.task.entitlementPath = [entitlementField stringValue];
+  self.task.certName = [certComboBox stringValue];
   if (changeBundleIDCheckbox.state == NSOnState) {
-    task.changeBundleID = YES;
-    task.bundleID = bundleIDField.stringValue;
+    self.task.changeBundleID = YES;
+    self.task.bundleID = bundleIDField.stringValue;
   }
   
-  [task resign];
+  
+  [self.task resign];
 }
 
 /*
@@ -772,15 +783,18 @@ static NSString *kKeyPrefsBundleIDChange            = @"keyBundleIDChange";
   NSLog(@"Getting Certificate IDs");
   [statusLabel setStringValue:@"Getting Signing Certificate IDs"];
 
-  IRCertFetcher *certFetcher = [[IRCertFetcher alloc] init];
-  [certFetcher getCertsWithCompletion:^(NSArray *certificates) {
-    if(self) {
-      [self setCerts:certificates];
+  __weak typeof(self) weakSelf = self;
+  self.certFetcher = [[IRCertFetcher alloc] init];
+  [self.certFetcher getCertsWithCompletion:^(NSArray *certificates) {
+    if(weakSelf) {
+      [weakSelf setCerts:certificates];
     }
   }];
 }
 
 - (void)setCerts:(NSArray*) certs {
+  self.certFetcher = nil;
+  
   certComboBoxItems = [NSMutableArray arrayWithArray:certs];  
   [certComboBox reloadData];
   [self checkCerts];

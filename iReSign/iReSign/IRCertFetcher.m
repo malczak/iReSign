@@ -66,11 +66,12 @@
         [tempGetCertsResult addObject:[rawResult objectAtIndex:i+1]];
       }
     }
-
-    void (^b)(NSArray*) = self.completeBlock;
-    dispatch_async(dispatch_get_main_queue(), ^(){
-      b(tempGetCertsResult);
-    });
+//
+//    void (^b)(NSArray*) = self.completeBlock;
+//    dispatch_async(dispatch_get_main_queue(), ^(){
+//      b(tempGetCertsResult);
+//    });
+    self.completeBlock(tempGetCertsResult);
     self.completeBlock = nil;
   }
 }

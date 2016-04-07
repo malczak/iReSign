@@ -14,6 +14,7 @@
 		32BDF5601CB6489C008F8E92 /* IRTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 32BDF55F1CB6489C008F8E92 /* IRTask.m */; };
 		32BDF5611CB652D6008F8E92 /* IRTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 32BDF55F1CB6489C008F8E92 /* IRTask.m */; };
 		32BDF5641CB6547D008F8E92 /* IRResignTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 32BDF5631CB6547D008F8E92 /* IRResignTask.m */; };
+		32BDF5651CB67C8B008F8E92 /* IRResignTask.m in Sources */ = {isa = PBXBuildFile; fileRef = 32BDF5631CB6547D008F8E92 /* IRResignTask.m */; };
 		4C8EAD45185B74B90095DC6B /* IRHelpWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C8EAD44185B74B90095DC6B /* IRHelpWindow.m */; };
 		5B9E4C4C166AB3F7006D9F8F /* IRTextFieldDrag.m in Sources */ = {isa = PBXBuildFile; fileRef = 5B9E4C4B166AB3F7006D9F8F /* IRTextFieldDrag.m */; };
 		C115EE2B13815024003B9ACC /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C115EE2A13815024003B9ACC /* Cocoa.framework */; };
@@ -261,6 +262,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				32BDF5651CB67C8B008F8E92 /* IRResignTask.m in Sources */,
 				32BDF5611CB652D6008F8E92 /* IRTask.m in Sources */,
 				32BDF4F01CB53C7C008F8E92 /* IRCertFetcher.m in Sources */,
 				32BDF4E21CB4F3C1008F8E92 /* main.m in Sources */,

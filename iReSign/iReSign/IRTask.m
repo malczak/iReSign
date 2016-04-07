@@ -89,8 +89,6 @@
     [self.task terminate];
   }
   
-  self.task.standardOutput = nil;
-  self.task.standardError = nil;
   self.task.terminationHandler = nil;
   self.task = nil;
 }

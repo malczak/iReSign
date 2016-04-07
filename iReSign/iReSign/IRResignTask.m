@@ -699,4 +699,8 @@ static NSString *kiTunesMetadataFileName            = @"iTunesMetadata";
   }
 }
 
+-(void)dealloc {
+  NSLog(@"Ups");
+}
+
 @end
