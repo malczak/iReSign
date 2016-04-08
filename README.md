@@ -14,6 +14,33 @@ iReSign allows you to re-sign any unencrypted ipa-file with any certificate for 
 
 3. Click ReSign! and wait. The resigned file will be saved in the same folder as the original file.
 
+Termminal
+==
+
+iReSignCmd can also be used from command line 
+```
+$> iReSignCmd --help
+Usage: -i ipa [-m mobileprov] [-e entitlements] -c cert [-p pass] [-b bundleId] [--list-certs] [--help]
+Resign IPA file. ]:-> 
+
+  -i, --ipa=ipa ipa to be resigned installed certificates
+  -m, --mobileprov=mobileprov mobile provisioning to be used in resigning
+  -e, --entitlements=entitlements entitlements file to be used
+  -c, --certificate=cert certificate to be used for resigning
+  -p, --password=pass certificate password
+  -b, --bundle=bundleId new bundle id to be used
+  --list-certs list installed certificates
+  --help     print this help and exit
+
+```
+
+Original repository
+=======
+
+Original code was taken from open source project available on:
+
+https://github.com/maciekish/iReSign
+
 License
 =======
 
