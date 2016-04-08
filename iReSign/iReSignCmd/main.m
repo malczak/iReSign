@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
       return 0;
     }
     
-    int done = 0;
+    BOOL done = NO;
     
     /* Parse the command line as defined by argtable[] */
     int nerrors = arg_parse(argc,argv,argtable);
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
     if (!done && help->count > 0)
     {
       show_help();
-      done = 1;
+      done = YES;
     }
     
     /* special case: '--list' takes precedence over actions */
@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
     {
       printf("Getting available certificates list\n");
       list_certificates();
-      done = 1;
+      done = YES;
     }
     
     /* If the parser returned any errors then display them and exit */
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
       /* Display the error details contained in the arg_end struct.*/
       arg_print_errors(stdout,end,progname);
       printf("Try '%s --help' for more information.\n",progname);
-      done = 1;
+      done = YES;
     }
     
     if(!done) {
@@ -177,31 +177,33 @@ int main(int argc, char **argv) {
       
       if(ipa->count > 0)
       {
-        sourcePath = [NSString stringWithUTF8String:ipa->filename[0]];
-        NSLog(@"Using source file '%@'\n", sourcePath);
+        const char *sFileName = ipa->filename[0];
+        printf("Using source file '%s'\n", sFileName);
+        sourcePath = [NSString stringWithUTF8String: sFileName];
       }
       
       if(cert->count > 0)
       {
-        certName = [NSString stringWithUTF8String:cert->sval[0]];
-        if([certName hasPrefix:@"@"]) {
-          __block NSString *certNameAtIndex = nil;
+        __block NSArray *availableCerts = nil;
+        IRCertFetcher *certFetcher = [[IRCertFetcher alloc] init];
+        [certFetcher getCertsSyncWithCompletion:^(NSArray *certificates) {
+          availableCerts = certificates;
+        }];
 
+        const char *cName = cert->sval[0];
+        certName = [NSString stringWithUTF8String:cName];
+        if([certName hasPrefix:@"@"]) {
           NSInteger certIdx = [[certName substringFromIndex:1] integerValue];
-          IRCertFetcher *certFetcher = [[IRCertFetcher alloc] init];
-          [certFetcher getCertsSyncWithCompletion:^(NSArray *certificates) {
-            certNameAtIndex = (certIdx < [certificates count]) ? [certificates objectAtIndex:certIdx] : nil;
-          }];
-          
-          certName = certNameAtIndex;
+          certName = (certIdx < [availableCerts count]) ? [availableCerts objectAtIndex:certIdx] : nil;
         }
         
-        if(!certName) {
-          NSLog(@"Unknown certificate. Available certificates\n");
+        BOOL validCert = (certName && ([availableCerts containsObject:certName]));
+        if(!validCert) {
+          printf("Unknown certificate '%s'.\nAvailable certificates\n", [certName UTF8String]);
           list_certificates();
-          done = 1;
+          done = YES;
         } else {
-          NSLog(@"Using certificate '%@'\n", certName);
+          printf("Using certificate '%s'\n", [certName UTF8String]);
         }
       }
       
@@ -214,13 +216,15 @@ int main(int argc, char **argv) {
         task.certName = certName;
         
         if(prov->count > 0) {
-          task.provisioningPath = [NSString stringWithUTF8String:prov->filename[0]];
-          NSLog(@"Using provisioning file '%@'\n", task.provisioningPath);
+          const char *pFileName = prov->filename[0];
+          printf("Using provisioning file '%s'\n", pFileName);
+          task.provisioningPath = [NSString stringWithUTF8String:pFileName];
         }
         
         if(ent->count > 0) {
-          task.entitlementPath = [NSString stringWithUTF8String:ent->filename[0]];
-          NSLog(@"Using entitlement file '%@'\n", task.entitlementPath);
+          const char *eFileName = ent->filename[0];
+          printf("Using entitlement file '%s'\n", eFileName);
+          task.entitlementPath = [NSString stringWithUTF8String:eFileName];
         }
         
         if(bund->count > 0) {

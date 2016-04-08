@@ -255,15 +255,15 @@ static NSString *kKeyPrefsBundleIDChange            = @"keyBundleIDChange";
 #pragma mark - Protocol IRResignTaskDelegate conformance
 
 -(void)resignTaskDidStart:(IRResignTask *)task {
-  
+  [self disableControls];
 }
 
 -(void)resignTaskDidComplete:(IRResignTask *)task withError:(NSError *)error {
-  
+  [self enableControls];
 }
 
 -(void)resignTaskDidComplete:(IRResignTask *)task {
-  
+  [self enableControls];
 }
 
 -(void)resignTask:(IRResignTask *)task didSetStatus:(NSString *)status
