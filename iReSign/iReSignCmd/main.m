@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
         
         if(bund->count > 0) {
           NSString *bundleId = [[NSString stringWithUTF8String:bund->sval[0]] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-          if([bundleId isEqualToString:@""]){
+          if(![bundleId isEqualToString:@""]){
             task.changeBundleID = YES;
             task.bundleID = bundleId;
           }
